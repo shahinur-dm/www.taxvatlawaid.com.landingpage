@@ -1,33 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import {
-  Playfair_Display,
-  Plus_Jakarta_Sans,
-  Hind_Siliguri,
-} from "next/font/google";
 import "./globals.css";
 import { FIRM_INFO } from "@/data/firm";
 import { AnalyticsScripts } from "@/components/AnalyticsScripts";
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-playfair",
-  display: "swap",
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-jakarta",
-  display: "swap",
-});
-
-const hindSiliguri = Hind_Siliguri({
-  subsets: ["bengali", "latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-hind-siliguri",
-  display: "swap",
-});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || FIRM_INFO.website;
 
@@ -138,10 +112,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${playfair.variable} ${jakarta.variable} ${hindSiliguri.variable}`}
-    >
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="font-sans antialiased bg-white text-[#1E2438]">
         <script
           type="application/ld+json"

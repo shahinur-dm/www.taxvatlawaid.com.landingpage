@@ -22,9 +22,9 @@
   --color-brand-gold-soft: #fbf6e6;
   --color-brand-lime: #a8cc3c;
 
-  --font-sans: var(--font-jakarta), var(--font-hind-siliguri), system-ui, -apple-system, sans-serif;
-  --font-serif: var(--font-playfair), Georgia, "Times New Roman", serif;
-  --font-bn: var(--font-hind-siliguri), system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Hind Siliguri", system-ui, -apple-system, sans-serif;
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-bn: "Hind Siliguri", system-ui, sans-serif;
 }
 
 @layer base {
@@ -74,5 +74,5 @@
 }
 
 .font-bn-mode {
-  font-family: var(--font-hind-siliguri), var(--font-jakarta), system-ui, sans-serif;
+  font-family: "Hind Siliguri", "Plus Jakarta Sans", system-ui, sans-serif;
 }
