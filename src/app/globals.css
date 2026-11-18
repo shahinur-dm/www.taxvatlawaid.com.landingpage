@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Exact Brand Colors extracted from official TaxVat LawAid Logo */
+  --color-navy-950: #12143d;
+  --color-navy-900: #1b1e59;
+  --color-navy-800: #2b2e7e;
+  --color-navy-700: #383c99;
+  --color-navy-100: #eef0fa;
+  --color-navy-50: #f6f7fc;
+
+  --color-brand-red: #cc242b;
+  --color-brand-red-dark: #a81b21;
+  --color-brand-red-soft: #fdf1f2;
+
+  --color-brand-green: #45b049;
+  --color-brand-green-dark: #359639;
+  --color-brand-green-soft: #eef9ef;
+
+  --color-brand-gold: #c99a1e;
+  --color-brand-gold-bright: #e0b437;
+  --color-brand-gold-soft: #fbf6e6;
+  --color-brand-lime: #a8cc3c;
+
+  --font-sans: var(--font-jakarta), var(--font-hind-siliguri), system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-playfair), Georgia, "Times New Roman", serif;
+  --font-bn: var(--font-hind-siliguri), system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 96px;
+  }
+
+  body {
+    background-color: #ffffff;
+    color: #1e2438;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: #2b2e7e;
+    color: #ffffff;
+  }
+}
+
+/* Subtle premium legal paper hairline pattern for hero accent */
+.bg-legal-grid {
+  background-image: linear-gradient(to right, rgba(43, 46, 126, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(43, 46, 126, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Subtle entrance animation */
+@keyframes fadeUpSoft {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUpSoft 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-up-delay {
+  animation: fadeUpSoft 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+.font-bn-mode {
+  font-family: var(--font-hind-siliguri), var(--font-jakarta), system-ui, sans-serif;
+}
