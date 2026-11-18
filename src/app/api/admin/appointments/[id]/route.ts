@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedAdmin } from "@/lib/supabase/server";
+import { ObjectId, MongoServerError } from "mongodb";
+import { getAuthenticatedAdmin } from "@/lib/auth";
+import { getCollection } from "@/lib/mongodb";
 import { adminUpdateAppointmentSchema } from "@/lib/validation";
 
 export async function PATCH(
@@ -12,17 +14,11 @@ export async function PATCH(
   }
 
   const { id } = await context.params;
-  if (!id) {
-    return NextResponse.json({ error: "Missing appointment ID" }, { status: 400 });
+  if (!id || !ObjectId.isValid(id)) {
+    return NextResponse.json({ error: "Invalid appointment ID" }, { status: 400 });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
+  const body = await request.json().catch(() => null);
   const parsed = adminUpdateAppointmentSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -31,25 +27,90 @@ export async function PATCH(
     );
   }
 
-  const updatePayload: Record<string, unknown> = {
+  const now = new Date();
+  const updateSet: Record<string, unknown> = {
     ...parsed.data,
+    updated_at: now,
   };
 
   if (parsed.data.status) {
-    updatePayload.reviewed_by = admin.profile.id;
-    updatePayload.reviewed_at = new Date().toISOString();
-    updatePayload.is_new = false;
+    updateSet.reviewed_by = admin.id;
+    updateSet.reviewed_at = now;
+    updateSet.is_new = false;
   }
 
-  const { data, error } = await admin.supabase
-    .from("appointments")
-    .update(updatePayload)
-    .eq("id", id)
-    .select("*")
-    .single();
+  try {
+    const [apptCol, notifCol] = await Promise.all([
+      getCollection("appointments"),
+      getCollection("admin_notifications"),
+    ]);
 
-  if (error) {
-    if (error.code === "23505") {
+    const updated = await apptCol.findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: updateSet },
+      { returnDocument: "after" }
+    );
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: "Appointment record not found." },
+        { status: 404 }
+      );
+    }
+
+    if (parsed.data.status || parsed.data.is_new === false) {
+      await notifCol.updateMany(
+        { appointment_id: id },
+        { $set: { is_read: true } }
+      );
+    }
+
+    return NextResponse.json({
+      appointment: {
+        id: updated._id.toHexString(),
+        inquiry_id: updated.inquiry_id,
+        full_name: updated.full_name,
+        phone: updated.phone,
+        whatsapp_number: updated.whatsapp_number,
+        email: updated.email ?? null,
+        client_type: updated.client_type,
+        service_category: updated.service_category,
+        consultation_type: updated.consultation_type,
+        preferred_date: updated.preferred_date,
+        preferred_time: updated.preferred_time,
+        description: updated.description,
+        privacy_consent: Boolean(updated.privacy_consent),
+        status: updated.status,
+        is_new: Boolean(updated.is_new),
+        internal_notes: updated.internal_notes || "",
+        reviewed_by: updated.reviewed_by ?? null,
+        reviewed_at:
+          updated.reviewed_at instanceof Date
+            ? updated.reviewed_at.toISOString()
+            : updated.reviewed_at ?? null,
+        lead_source: updated.lead_source || "direct",
+        utm_source: updated.utm_source ?? null,
+        utm_medium: updated.utm_medium ?? null,
+        utm_campaign: updated.utm_campaign ?? null,
+        utm_term: updated.utm_term ?? null,
+        utm_content: updated.utm_content ?? null,
+        fbclid: updated.fbclid ?? null,
+        gclid: updated.gclid ?? null,
+        referrer_url: updated.referrer_url ?? null,
+        landing_page_url: updated.landing_page_url ?? null,
+        timezone: updated.timezone || "Asia/Dhaka",
+        created_at:
+          updated.created_at instanceof Date
+            ? updated.created_at.toISOString()
+            : String(updated.created_at),
+        updated_at:
+          updated.updated_at instanceof Date
+            ? updated.updated_at.toISOString()
+            : String(updated.updated_at),
+      },
+    });
+  } catch (err) {
+    if (err instanceof MongoServerError && err.code === 11000) {
       return NextResponse.json(
         {
           error:
@@ -58,22 +119,12 @@ export async function PATCH(
         { status: 409 }
       );
     }
-    console.error("Admin update appointment error:", error);
+    console.error("MongoDB admin update error:", err);
     return NextResponse.json(
       { error: "Failed to update appointment." },
       { status: 500 }
     );
   }
-
-  // Mark related admin notifications as read when reviewed
-  if (parsed.data.status || parsed.data.is_new === false) {
-    await admin.supabase
-      .from("admin_notifications")
-      .update({ is_read: true })
-      .eq("appointment_id", id);
-  }
-
-  return NextResponse.json({ appointment: data });
 }
 
 export async function DELETE(
@@ -86,18 +137,19 @@ export async function DELETE(
   }
 
   const { id } = await context.params;
-  const { error } = await admin.supabase
-    .from("appointments")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    console.error("Admin delete appointment error:", error);
-    return NextResponse.json(
-      { error: "Failed to delete record." },
-      { status: 500 }
-    );
+  if (!id || !ObjectId.isValid(id)) {
+    return NextResponse.json({ error: "Invalid appointment ID" }, { status: 400 });
   }
+
+  const [apptCol, notifCol] = await Promise.all([
+    getCollection("appointments"),
+    getCollection("admin_notifications"),
+  ]);
+
+  await Promise.all([
+    apptCol.deleteOne({ _id: new ObjectId(id) }),
+    notifCol.deleteMany({ appointment_id: id }),
+  ]);
 
   return NextResponse.json({ deleted: true });
 }

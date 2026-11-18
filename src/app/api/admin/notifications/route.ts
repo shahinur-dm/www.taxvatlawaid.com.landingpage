@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedAdmin } from "@/lib/supabase/server";
+import { getAuthenticatedAdmin } from "@/lib/auth";
+import { getCollection } from "@/lib/mongodb";
 
 export async function PATCH() {
   const admin = await getAuthenticatedAdmin();
@@ -7,17 +8,8 @@ export async function PATCH() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error } = await admin.supabase
-    .from("admin_notifications")
-    .update({ is_read: true })
-    .eq("is_read", false);
-
-  if (error) {
-    return NextResponse.json(
-      { error: "Failed to mark notifications as read." },
-      { status: 500 }
-    );
-  }
+  const notifCol = await getCollection("admin_notifications");
+  await notifCol.updateMany({ is_read: false }, { $set: { is_read: true } });
 
   return NextResponse.json({ success: true });
 }

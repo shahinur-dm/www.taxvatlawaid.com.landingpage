@@ -1,49 +1,29 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { jwtVerify } from "jose";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+const ADMIN_COOKIE_NAME = "tvla_admin_session";
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+async function hasValidAdminCookie(request: NextRequest): Promise<boolean> {
+  const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  if (!token) return false;
 
-  // Allow login page or public routes when Supabase isn't configured yet
-  if (!url || !anonKey) {
-    return supabaseResponse;
+  const secret =
+    process.env.ADMIN_JWT_SECRET ||
+    "fallback-dev-only-change-admin-jwt-secret-in-env";
+  try {
+    await jwtVerify(token, new TextEncoder().encode(secret));
+    return true;
+  } catch {
+    return false;
   }
+}
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(
-        cookiesToSet: Array<{
-          name: string;
-          value: string;
-          options: CookieOptions;
-        }>
-      ) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
-        supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
-        );
-      },
-    },
-  });
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const isAuthed = await hasValidAdminCookie(request);
 
-  // Protect /admin dashboard routes (except /admin/login)
   if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
-    if (!user) {
+    if (!isAuthed) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/admin/login";
       loginUrl.searchParams.set("redirectTo", pathname);
@@ -51,14 +31,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect authenticated admin away from /admin/login
-  if (pathname === "/admin/login" && user) {
+  if (pathname === "/admin/login" && isAuthed) {
     const adminUrl = request.nextUrl.clone();
     adminUrl.pathname = "/admin";
     return NextResponse.redirect(adminUrl);
   }
 
-  return supabaseResponse;
+  return NextResponse.next();
 }
 
 export const config = {

@@ -6,13 +6,9 @@ import {
   getDhakaTodayISO,
   isChamberWorkingDay,
 } from "@/lib/validation";
-import {
-  createServiceRoleClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
+import { getCollection, isMongoConfigured } from "@/lib/mongodb";
 import { sendAdminEmailNotification } from "@/lib/notifications";
 
-// Simple per-instance sliding-window rate limiter (10 requests / 10 min per IP)
 const rateLimitMap = new Map<string, number[]>();
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_MAX_REQUESTS = 10;
@@ -29,6 +25,11 @@ function isRateLimited(ip: string): boolean {
   timestamps.push(now);
   rateLimitMap.set(ip, timestamps);
   return false;
+}
+
+function getDayOfWeekUTC(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 6, 0, 0)).getUTCDay();
 }
 
 export async function POST(request: NextRequest) {
@@ -59,24 +60,23 @@ export async function POST(request: NextRequest) {
 
   const parsed = appointmentRequestSchema.safeParse(body);
   if (!parsed.success) {
-    const fieldErrors = parsed.error.flatten().fieldErrors;
     return NextResponse.json(
       {
         error: "Please check the highlighted fields and try again.",
-        fieldErrors,
+        fieldErrors: parsed.error.flatten().fieldErrors,
       },
       { status: 400 }
     );
   }
 
   const data = parsed.data;
-
-  // Validate date against Asia/Dhaka today and chamber working days (Sun–Thu)
   const todayDhaka = getDhakaTodayISO();
+
   if (data.preferredDate < todayDhaka) {
     return NextResponse.json(
       {
-        error: "Please choose today or a future chamber working day (Sunday – Thursday).",
+        error:
+          "Please choose today or a future chamber working day (Sunday – Thursday).",
         fieldErrors: { preferredDate: ["Date cannot be in the past."] },
       },
       { status: 400 }
@@ -94,60 +94,62 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!isSupabaseAdminConfigured()) {
+  if (!isMongoConfigured()) {
     return NextResponse.json(
       {
-        error:
-          "Database connection is not configured yet. Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local and run the SQL migration.",
-        code: "SUPABASE_NOT_CONFIGURED",
+        error: "Database connection (MONGODB_URI) is not configured.",
+        code: "MONGODB_NOT_CONFIGURED",
       },
       { status: 503 }
     );
   }
 
   try {
-    const supabase = createServiceRoleClient();
+    const [blockedCol, slotsCol, apptCol, notifCol] = await Promise.all([
+      getCollection("blocked_dates"),
+      getCollection("availability_slots"),
+      getCollection("appointments"),
+      getCollection("admin_notifications"),
+    ]);
 
-    // Check blocked dates and slot availability before inserting
-    const { data: availabilityRows, error: availError } = await supabase.rpc(
-      "get_date_availability",
-      { target_date: data.preferredDate }
-    );
-
-    if (availError) {
-      console.error("Slot check error:", availError);
+    const blocked = await blockedCol.findOne({
+      blocked_date: data.preferredDate,
+    });
+    if (blocked) {
       return NextResponse.json(
-        { error: "Could not verify slot availability. Please try again." },
-        { status: 500 }
+        {
+          error: `Selected date is unavailable: ${blocked.reason || "Chamber Closed"}. Please choose another date.`,
+          fieldErrors: { preferredDate: [blocked.reason || "Date blocked"] },
+        },
+        { status: 409 }
       );
     }
 
-    const matchingSlot = (availabilityRows || []).find(
-      (row: { slot_label: string; is_available: boolean; blocked_reason: string | null }) =>
-        row.slot_label === data.preferredTime
-    );
+    const dow = getDayOfWeekUTC(data.preferredDate);
+    const activeSlot = await slotsCol.findOne({
+      day_of_week: dow,
+      slot_label: data.preferredTime,
+      is_active: true,
+    });
 
-    if (!matchingSlot) {
+    if (!activeSlot) {
       return NextResponse.json(
         {
-          error: "The selected time slot is not active for this date. Please choose an available slot.",
+          error:
+            "The selected time slot is not active for this date. Please choose an available slot.",
           fieldErrors: { preferredTime: ["Selected time slot is unavailable."] },
         },
         { status: 409 }
       );
     }
 
-    if (matchingSlot.blocked_reason) {
-      return NextResponse.json(
-        {
-          error: `Selected date is unavailable: ${matchingSlot.blocked_reason}. Please choose another date.`,
-          fieldErrors: { preferredDate: [matchingSlot.blocked_reason] },
-        },
-        { status: 409 }
-      );
-    }
+    const existingCount = await apptCol.countDocuments({
+      preferred_date: data.preferredDate,
+      preferred_time: data.preferredTime,
+      status: { $in: ["pending", "confirmed"] },
+    });
 
-    if (!matchingSlot.is_available) {
+    if (existingCount >= Number(activeSlot.max_bookings || 1)) {
       return NextResponse.json(
         {
           error:
@@ -167,52 +169,56 @@ export async function POST(request: NextRequest) {
       referrerUrl: data.referrerUrl,
     });
 
-    // IMPORTANT: Always save as 'pending' — NEVER auto-confirm before admin approval
-    const { data: inserted, error: insertError } = await supabase
-      .from("appointments")
-      .insert({
-        inquiry_id: inquiryId,
-        full_name: data.fullName,
-        phone: data.phone,
-        whatsapp_number: data.whatsappNumber,
-        email: data.email || null,
-        client_type: data.clientType,
-        service_category: data.serviceCategory,
-        consultation_type: data.consultationType,
-        preferred_date: data.preferredDate,
-        preferred_time: data.preferredTime,
-        description: data.description,
-        privacy_consent: true,
-        status: "pending",
-        is_new: true,
-        lead_source: leadSource,
-        utm_source: data.utmSource || null,
-        utm_medium: data.utmMedium || null,
-        utm_campaign: data.utmCampaign || null,
-        utm_term: data.utmTerm || null,
-        utm_content: data.utmContent || null,
-        fbclid: data.fbclid || null,
-        gclid: data.gclid || null,
-        referrer_url: data.referrerUrl || null,
-        landing_page_url: data.landingPageUrl || null,
-        timezone: "Asia/Dhaka",
-      })
-      .select(
-        "id, inquiry_id, full_name, service_category, consultation_type, preferred_date, preferred_time, status, created_at"
-      )
-      .single();
+    const now = new Date();
 
-    if (insertError) {
-      console.error("Appointment insert error:", insertError);
-      return NextResponse.json(
-        { error: "Unable to save your appointment request. Please try again." },
-        { status: 500 }
-      );
-    }
+    // Always start as 'pending' — NEVER auto-confirm before admin approval
+    const doc = {
+      inquiry_id: inquiryId,
+      full_name: data.fullName,
+      phone: data.phone,
+      whatsapp_number: data.whatsappNumber,
+      email: data.email || null,
+      client_type: data.clientType,
+      service_category: data.serviceCategory,
+      consultation_type: data.consultationType,
+      preferred_date: data.preferredDate,
+      preferred_time: data.preferredTime,
+      description: data.description,
+      privacy_consent: true,
+      status: "pending" as const,
+      is_new: true,
+      internal_notes: "",
+      reviewed_by: null,
+      reviewed_at: null,
+      lead_source: leadSource,
+      utm_source: data.utmSource || null,
+      utm_medium: data.utmMedium || null,
+      utm_campaign: data.utmCampaign || null,
+      utm_term: data.utmTerm || null,
+      utm_content: data.utmContent || null,
+      fbclid: data.fbclid || null,
+      gclid: data.gclid || null,
+      referrer_url: data.referrerUrl || null,
+      landing_page_url: data.landingPageUrl || null,
+      timezone: "Asia/Dhaka",
+      created_at: now,
+      updated_at: now,
+    };
 
-    // Trigger optional email notification asynchronously without delaying response failure
+    const insertRes = await apptCol.insertOne(doc);
+
+    // Automatically log an admin notification in MongoDB
+    await notifCol.insertOne({
+      appointment_id: insertRes.insertedId.toHexString(),
+      inquiry_id: inquiryId,
+      title: `New Appointment Request: ${inquiryId}`,
+      message: `${data.fullName} requested ${data.serviceCategory} (${data.consultationType}) on ${data.preferredDate} at ${data.preferredTime}`,
+      is_read: false,
+      created_at: now,
+    });
+
     await sendAdminEmailNotification({
-      inquiryId: inserted.inquiry_id,
+      inquiryId,
       fullName: data.fullName,
       phone: data.phone,
       whatsappNumber: data.whatsappNumber,
@@ -230,16 +236,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        appointment: inserted,
+        appointment: {
+          id: insertRes.insertedId.toHexString(),
+          inquiry_id: inquiryId,
+          full_name: data.fullName,
+          service_category: data.serviceCategory,
+          consultation_type: data.consultationType,
+          preferred_date: data.preferredDate,
+          preferred_time: data.preferredTime,
+          status: "pending",
+          created_at: now.toISOString(),
+        },
         message:
           "Your consultation request has been received and is pending chamber verification.",
       },
       { status: 201 }
     );
   } catch (err) {
-    console.error("Unexpected booking error:", err);
+    console.error("MongoDB appointment insert error:", err);
     return NextResponse.json(
-      { error: "An unexpected server error occurred. Please try again." },
+      { error: "Unable to save your appointment request. Please try again." },
       { status: 500 }
     );
   }

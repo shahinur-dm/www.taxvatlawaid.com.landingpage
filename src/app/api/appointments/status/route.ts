@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { inquiryStatusLookupSchema } from "@/lib/validation";
-import {
-  createServiceRoleClient,
-  isSupabaseAdminConfigured,
-} from "@/lib/supabase/admin";
+import { getCollection, isMongoConfigured } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +20,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (!isSupabaseAdminConfigured()) {
+  if (!isMongoConfigured()) {
     return NextResponse.json(
       { error: "Database connection is not configured yet." },
       { status: 503 }
@@ -31,22 +28,24 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = createServiceRoleClient();
-    const { data, error } = await supabase.rpc("check_inquiry_status", {
-      p_inquiry_id: parsed.data.inquiryId,
-      p_phone_last4: parsed.data.phoneLast4,
-    });
+    const apptCol = await getCollection("appointments");
+    const doc = await apptCol.findOne(
+      { inquiry_id: parsed.data.inquiryId.trim().toUpperCase() },
+      {
+        projection: {
+          inquiry_id: 1,
+          phone: 1,
+          service_category: 1,
+          consultation_type: 1,
+          preferred_date: 1,
+          preferred_time: 1,
+          status: 1,
+          created_at: 1,
+        },
+      }
+    );
 
-    if (error) {
-      console.error("Status lookup error:", error);
-      return NextResponse.json(
-        { error: "Could not verify inquiry status." },
-        { status: 500 }
-      );
-    }
-
-    const record = Array.isArray(data) ? data[0] : null;
-    if (!record) {
+    if (!doc) {
       return NextResponse.json(
         {
           error:
@@ -56,9 +55,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ inquiry: record });
+    const digits = String(doc.phone || "").replace(/\D/g, "");
+    if (!digits.endsWith(parsed.data.phoneLast4)) {
+      return NextResponse.json(
+        {
+          error:
+            "No matching inquiry found. Please check your Inquiry ID and the last 4 digits of your phone number.",
+        },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      inquiry: {
+        inquiry_id: doc.inquiry_id,
+        service_category: doc.service_category,
+        consultation_type: doc.consultation_type,
+        preferred_date: doc.preferred_date,
+        preferred_time: doc.preferred_time,
+        status: doc.status,
+        created_at:
+          doc.created_at instanceof Date
+            ? doc.created_at.toISOString()
+            : String(doc.created_at),
+      },
+    });
   } catch (err) {
-    console.error("Unexpected status lookup error:", err);
+    console.error("MongoDB status lookup error:", err);
     return NextResponse.json(
       { error: "Failed to check inquiry status." },
       { status: 500 }

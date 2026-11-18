@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
-import {
-  getAuthenticatedAdmin,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { getAuthenticatedAdmin } from "@/lib/auth";
+import { isMongoConfigured } from "@/lib/mongodb";
 import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -16,7 +14,7 @@ export const metadata = {
 };
 
 export default async function AdminDashboardPage() {
-  if (!isSupabaseConfigured()) {
+  if (!isMongoConfigured()) {
     return (
       <div className="min-h-screen bg-[#F6F7FC] flex items-center justify-center p-6">
         <div className="max-w-lg w-full rounded-2xl bg-white p-8 shadow-md ring-1 ring-slate-200 space-y-5">
@@ -24,14 +22,11 @@ export default async function AdminDashboardPage() {
           <div className="flex items-start gap-3 rounded-xl bg-[#FBF6E6] border border-[#C99A1E]/35 p-4 text-sm text-[#7C5909]">
             <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-[#C99A1E]" />
             <div>
-              <p className="font-bold">Supabase Connection Not Configured</p>
+              <p className="font-bold">MongoDB Connection Not Configured</p>
               <p className="mt-1 text-xs leading-relaxed">
-                This admin dashboard runs strictly on real Supabase PostgreSQL data. Set{" "}
-                <code>NEXT_PUBLIC_SUPABASE_URL</code>,{" "}
-                <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>, and{" "}
-                <code>SUPABASE_SERVICE_ROLE_KEY</code> in <code>.env.local</code>, apply{" "}
-                <code>supabase/migrations/001_initial_schema.sql</code>, and create your
-                admin user to activate <code>/admin</code>.
+                This admin dashboard runs strictly on real MongoDB Atlas data. Set{" "}
+                <code>MONGODB_URI</code> and <code>ADMIN_JWT_SECRET</code> in{" "}
+                <code>.env.local</code> (or Vercel Environment Variables).
               </p>
             </div>
           </div>
@@ -51,7 +46,7 @@ export default async function AdminDashboardPage() {
     redirect("/admin/login");
   }
 
-  if (!admin.profile.is_active) {
+  if (!admin.is_active) {
     return (
       <div className="min-h-screen bg-[#F6F7FC] flex items-center justify-center p-6">
         <div className="max-w-md w-full rounded-2xl bg-white p-8 shadow-md ring-1 ring-slate-200 text-center space-y-4">
@@ -70,9 +65,9 @@ export default async function AdminDashboardPage() {
 
   return (
     <AdminDashboardClient
-      adminName={admin.profile.full_name}
-      adminEmail={admin.profile.email}
-      adminRole={admin.profile.role}
+      adminName={admin.full_name}
+      adminEmail={admin.email}
+      adminRole={admin.role}
     />
   );
 }

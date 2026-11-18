@@ -30,7 +30,6 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { FIRM_INFO, SERVICE_CATEGORIES } from "@/data/firm";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { BrandLogo } from "@/components/BrandLogo";
 import type {
   AdminNotificationRecord,
@@ -193,8 +192,7 @@ export function AdminDashboardClient({
   }, [activeTab, fetchAvailability]);
 
   async function handleSignOut() {
-    const supabase = createBrowserSupabaseClient();
-    await supabase.auth.signOut();
+    await fetch("/api/admin/auth/logout", { method: "POST" });
     router.push("/admin/login");
     router.refresh();
   }
@@ -455,9 +453,8 @@ export function AdminDashboardClient({
                       notifications.map((n) => (
                         <div
                           key={n.id}
-                          className={`p-3.5 text-xs ${
-                            n.is_read ? "bg-white" : "bg-[#EEF0FA]/60"
-                          }`}
+                          className={`p-3.5 text-xs ${n.is_read ? "bg-white" : "bg-[#EEF0FA]/60"
+                            }`}
                         >
                           <p className="font-bold text-[#1B1E59]">{n.title}</p>
                           <p className="mt-0.5 text-slate-600">{n.message}</p>
@@ -519,7 +516,7 @@ export function AdminDashboardClient({
               Leads &amp; Appointments Console
             </h1>
             <p className="text-sm text-slate-600 mt-0.5">
-              Live Supabase PostgreSQL records • Asia/Dhaka (BST) Chamber Desk
+              Live MongoDB Atlas records • Asia/Dhaka (BST) Chamber Desk
             </p>
           </div>
 
@@ -528,11 +525,10 @@ export function AdminDashboardClient({
               <button
                 type="button"
                 onClick={() => setActiveTab("leads")}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${
-                  activeTab === "leads"
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${activeTab === "leads"
                     ? "bg-[#2B2E7E] text-white"
                     : "text-slate-600 hover:text-[#1B1E59]"
-                }`}
+                  }`}
               >
                 <Users className="h-3.5 w-3.5" />
                 Leads &amp; Bookings
@@ -540,11 +536,10 @@ export function AdminDashboardClient({
               <button
                 type="button"
                 onClick={() => setActiveTab("availability")}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${
-                  activeTab === "availability"
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${activeTab === "availability"
                     ? "bg-[#2B2E7E] text-white"
                     : "text-slate-600 hover:text-[#1B1E59]"
-                }`}
+                  }`}
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
                 Availability &amp; Holidays
@@ -721,7 +716,7 @@ export function AdminDashboardClient({
                 <div className="py-16 flex flex-col items-center justify-center gap-3 text-slate-500">
                   <Loader2 className="h-7 w-7 animate-spin text-[#2B2E7E]" />
                   <p className="text-sm font-medium">
-                    Loading real Supabase leads...
+                    Loading real MongoDB leads...
                   </p>
                 </div>
               ) : appointments.length === 0 ? (
@@ -755,9 +750,8 @@ export function AdminDashboardClient({
                         return (
                           <tr
                             key={item.id}
-                            className={`hover:bg-[#F6F7FC]/70 transition ${
-                              item.is_new ? "bg-[#EEF0FA]/35" : ""
-                            }`}
+                            className={`hover:bg-[#F6F7FC]/70 transition ${item.is_new ? "bg-[#EEF0FA]/35" : ""
+                              }`}
                           >
                             <td className="py-3.5 px-4 align-top whitespace-nowrap">
                               <div className="flex items-center gap-1.5">
@@ -825,7 +819,7 @@ export function AdminDashboardClient({
                             <td className="py-3.5 px-4 align-top whitespace-nowrap text-right">
                               <div className="inline-flex items-center gap-1.5">
                                 {item.status === "pending" ||
-                                item.status === "new" ? (
+                                  item.status === "new" ? (
                                   <>
                                     <button
                                       type="button"
@@ -922,11 +916,10 @@ export function AdminDashboardClient({
                               key={slot.id}
                               type="button"
                               onClick={() => handleToggleSlot(slot)}
-                              className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition cursor-pointer ${
-                                slot.is_active
+                              className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition cursor-pointer ${slot.is_active
                                   ? "bg-[#EEF9EF] border-[#45B049]/40 text-[#247A28]"
                                   : "bg-slate-100 border-slate-200 text-slate-400 line-through"
-                              }`}
+                                }`}
                             >
                               {slot.slot_label}
                             </button>
@@ -1096,9 +1089,8 @@ export function AdminDashboardClient({
                 />
                 <DetailField
                   label="WhatsApp / Email"
-                  value={`${selectedRecord.whatsapp_number}${
-                    selectedRecord.email ? ` • ${selectedRecord.email}` : ""
-                  }`}
+                  value={`${selectedRecord.whatsapp_number}${selectedRecord.email ? ` • ${selectedRecord.email}` : ""
+                    }`}
                 />
                 <div className="sm:col-span-2">
                   <DetailField
@@ -1233,9 +1225,8 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
   };
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ring-1 ${
-        map[status] || map.pending
-      }`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ring-1 ${map[status] || map.pending
+        }`}
     >
       {status}
     </span>

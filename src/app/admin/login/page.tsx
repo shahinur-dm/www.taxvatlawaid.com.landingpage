@@ -11,15 +11,10 @@ import {
   Mail,
   ShieldCheck,
 } from "lucide-react";
-import {
-  createBrowserSupabaseClient,
-  isSupabasePublicConfigured,
-} from "@/lib/supabase/client";
 import { BrandLogo } from "@/components/BrandLogo";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const configured = isSupabasePublicConfigured();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,40 +27,25 @@ export default function AdminLoginPage() {
     setError(null);
 
     try {
-      const supabase = createBrowserSupabaseClient();
-      const { data, error: signInError } =
-        await supabase.auth.signInWithPassword({
+      const res = await fetch("/api/admin/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           email: email.trim(),
           password,
-        });
+        }),
+      });
 
-      if (signInError || !data.user) {
-        setError(signInError?.message || "Invalid email or password.");
-        return;
-      }
-
-      // Verify user exists in admin_profiles
-      const { data: adminProfile, error: profileError } = await supabase
-        .from("admin_profiles")
-        .select("id, is_active")
-        .eq("id", data.user.id)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (profileError || !adminProfile) {
-        await supabase.auth.signOut();
-        setError(
-          "Your account is authenticated, but it is not registered as an active Chamber Administrator in admin_profiles."
-        );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Invalid email or password.");
         return;
       }
 
       router.push("/admin");
       router.refresh();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to sign in. Please try again."
-      );
+    } catch {
+      setError("Network error while signing in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -87,22 +67,6 @@ export default function AdminLoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="rounded-2xl bg-white py-8 px-6 sm:px-9 shadow-md ring-1 ring-slate-200/90">
-          {!configured ? (
-            <div className="rounded-xl bg-[#FBF6E6] border border-[#C99A1E]/35 p-4 text-sm text-[#7C5909] space-y-2">
-              <div className="flex items-center gap-2 font-bold">
-                <AlertCircle className="h-4 w-4 text-[#C99A1E]" />
-                Supabase Credentials Required
-              </div>
-              <p className="text-xs leading-relaxed">
-                Add <code>NEXT_PUBLIC_SUPABASE_URL</code>,{" "}
-                <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>, and{" "}
-                <code>SUPABASE_SERVICE_ROLE_KEY</code> to <code>.env.local</code>, run{" "}
-                <code>supabase/migrations/001_initial_schema.sql</code>, and create your
-                admin user in Supabase Auth.
-              </p>
-            </div>
-          ) : null}
-
           {error ? (
             <div
               role="alert"
@@ -160,7 +124,7 @@ export default function AdminLoginPage() {
 
             <button
               type="submit"
-              disabled={loading || !configured}
+              disabled={loading}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#2B2E7E] hover:bg-[#1B1E59] px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition disabled:opacity-60 cursor-pointer"
             >
               {loading ? (
@@ -185,7 +149,7 @@ export default function AdminLoginPage() {
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to Landing Page
             </Link>
-            <span>Supabase Auth + RLS</span>
+            <span>MongoDB Atlas • Encrypted JWT</span>
           </div>
         </div>
       </div>
