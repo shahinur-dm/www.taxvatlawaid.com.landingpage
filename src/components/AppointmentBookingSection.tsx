@@ -249,7 +249,9 @@ export function AppointmentBookingSection({
 
       if (!res.ok) {
         setErrorMessage(
-          data.error || "Unable to submit your request. Please check your details."
+          isBn
+            ? data.error || "আপনার আবেদনটি গ্রহণ করা সম্ভব হয়নি। অনুগ্রহ করে তথ্যগুলো পুনরায় যাচাই করুন।"
+            : data.error || "Unable to submit your request. Please check your details."
         );
         if (data.fieldErrors) {
           setFieldErrors(data.fieldErrors);
@@ -269,7 +271,9 @@ export function AppointmentBookingSection({
       });
     } catch {
       setErrorMessage(
-        "Network error while submitting your request. Please try again or reach our chamber on WhatsApp (+880 1614-446444)."
+        isBn
+          ? "আবেদন পাঠাতে নেটওয়ার্ক সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন অথবা সরাসরি চেম্বার হোয়াটসঅ্যাপে যোগাযোগ করুন (+৮৮০ ১৬১৪-৪৪৬৪৪৪)।"
+          : "Network error while submitting your request. Please try again or reach our chamber on WhatsApp (+880 1614-446444)."
       );
     } finally {
       setSubmitting(false);
@@ -290,12 +294,20 @@ export function AppointmentBookingSection({
       );
       const data = await res.json();
       if (!res.ok) {
-        setLookupError(data.error || "Could not find this inquiry.");
+        setLookupError(
+          isBn
+            ? data.error || "এই অনুসন্ধান আইডি খুঁজে পাওয়া যায়নি।"
+            : data.error || "Could not find this inquiry."
+        );
         return;
       }
       setLookupResult(data.inquiry);
     } catch {
-      setLookupError("Unable to verify status right now. Please try again.");
+      setLookupError(
+        isBn
+          ? "এই মুহূর্তে স্ট্যাটাস যাচাই করা সম্ভব হচ্ছে না। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।"
+          : "Unable to verify status right now. Please try again."
+      );
     } finally {
       setLookupLoading(false);
     }

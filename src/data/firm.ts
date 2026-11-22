@@ -5,8 +5,8 @@ export const FIRM_INFO = {
   associatedPractice: "TaxAid",
   tagline: "Your Trusted Partner in Tax, VAT, Customs & Corporate Legal Solutions",
   taglineBn: "আয়কর, ভ্যাট, কাস্টমস ও কর্পোরেট আইনি সমাধানে আপনার বিশ্বস্ত অংশীদার",
-  website: "https://www.taxvatlawaid.com",
-  existingVercelSite: "https://www-taxvatlawaid-com.vercel.app/",
+  website: "https://taxvatlawaid.com",
+  existingVercelSite: "https://taxvatlawaid.com/",
   email: "taxvatlawaid@gmail.com",
   phones: [
     { display: "+880 1614-446444", raw: "01614446444", tel: "+8801614446444" },

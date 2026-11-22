@@ -4,10 +4,12 @@ import { FIRM_INFO } from "@/data/firm";
 interface BrandLogoProps {
   variant?: "light" | "dark";
   compact?: boolean;
+  customLogoSrc?: string;
 }
 
-export function BrandLogo({ variant = "light", compact = false }: BrandLogoProps) {
+export function BrandLogo({ variant = "light", compact = false, customLogoSrc }: BrandLogoProps) {
   const isDark = variant === "dark";
+  const logoSrc = customLogoSrc || "/images/taxvat-lawaid-logo.png";
 
   return (
     <div className="flex items-center gap-3 select-none">
@@ -17,7 +19,7 @@ export function BrandLogo({ variant = "light", compact = false }: BrandLogoProps
         }`}
       >
         <Image
-          src="/images/taxvat-lawaid-logo.png"
+          src={logoSrc}
           alt="TaxVat LawAid Official Logo"
           width={compact ? 42 : 50}
           height={compact ? 47 : 56}

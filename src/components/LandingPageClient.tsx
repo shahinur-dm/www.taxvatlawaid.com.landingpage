@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Award,
@@ -42,7 +42,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { AppointmentBookingSection } from "@/components/AppointmentBookingSection";
 
 export function LandingPageClient() {
-  const [locale, setLocale] = useState<Locale>("en");
+  const [locale, setLocale] = useState<Locale>("bn");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [serviceFilter, setServiceFilter] = useState<
     "all" | "tax" | "corporate" | "litigation"
@@ -51,6 +51,29 @@ export function LandingPageClient() {
     string | undefined
   >(undefined);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+  const [siteImages, setSiteImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    async function loadSiteImages() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://taxvatlawaid.com";
+        const res = await fetch(`${apiUrl}/api/site-images`);
+        if (res.ok) {
+          const json = await res.json();
+          if (active && json?.map) {
+            setSiteImages(json.map);
+          }
+        }
+      } catch {
+        // Fallback gracefully to default images
+      }
+    }
+    loadSiteImages();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const isBn = locale === "bn";
 
@@ -122,7 +145,7 @@ export function LandingPageClient() {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
           <a href="#top" aria-label="TaxVat LawAid Home">
-            <BrandLogo />
+            <BrandLogo customLogoSrc={siteImages?.['landingBrandLogo']} />
           </a>
 
           {/* Single-page anchor links */}
@@ -334,7 +357,11 @@ export function LandingPageClient() {
                 <div className="relative rounded-2xl bg-white p-3 shadow-xl shadow-[#1B1E59]/10 ring-1 ring-slate-200/90">
                   <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
                     <Image
-                      src="/images/hero-legal-chamber.jpg"
+                      src={
+                        siteImages?.['landingHeroChamber'] ||
+                        siteImages?.['landingHero'] ||
+                        '/images/hero-legal-chamber.jpg'
+                      }
                       alt="TaxVat LawAid Legal & Tax Consultancy Chamber in Dhaka"
                       fill
                       sizes="(max-width: 1024px) 100vw, 42vw"
@@ -650,7 +677,10 @@ export function LandingPageClient() {
                 {/* Left Executive Chamber Visual + Verified Monogram Emblem */}
                 <div className="lg:col-span-5 relative min-h-[300px] lg:min-h-[460px] bg-[#1B1E59]">
                   <Image
-                    src="/images/chamber-consultation-room.jpg"
+                    src={
+                      siteImages?.['landingConsultationRoom'] ||
+                      '/images/chamber-consultation-room.jpg'
+                    }
                     alt="TaxVat LawAid Executive Consultation Chamber in Ramna, Dhaka"
                     fill
                     sizes="(max-width: 1024px) 100vw, 40vw"
@@ -1098,7 +1128,11 @@ export function LandingPageClient() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-8 border-b border-white/10">
             <div className="md:col-span-5">
-              <BrandLogo variant="dark" compact />
+              <BrandLogo
+                variant="dark"
+                compact
+                customLogoSrc={siteImages?.['landingBrandLogo']}
+              />
               <p className="mt-4 text-sm text-slate-300 leading-relaxed max-w-md">
                 {isBn
                   ? FIRM_INFO.taglineBn

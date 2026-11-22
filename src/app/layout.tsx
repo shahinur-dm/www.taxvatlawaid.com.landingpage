@@ -14,41 +14,64 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title:
-    "TaxVat LawAid | Income Tax, VAT, Customs & Corporate Law Firm in Bangladesh",
+    "TaxVat LawAid | Strategic Tax, VAT, Customs & Corporate Legal Counsel in Bangladesh",
   description:
     "Book a legal or tax consultation with TaxVat LawAid (Advocate Hossain Ahmed Khan) in Ramna, Dhaka. Trusted Income Tax, VAT, Customs, RJSC Company Law, IP, Tribunal & High Court Writ counsel in Bangladesh.",
   keywords: [
+    "Tax Lawyer Bangladesh",
+    "Tax Consultant Bangladesh",
+    "Income Tax Lawyer Bangladesh",
+    "Income Tax Consultant Dhaka",
+    "VAT Consultant Bangladesh",
+    "VAT Lawyer Bangladesh",
+    "VAT & Mushak Consultant",
+    "Tax Return Bangladesh",
+    "Corporate Lawyer Bangladesh",
+    "Corporate Legal Consultant Bangladesh",
+    "RJSC Consultant Bangladesh",
+    "RJSC Company Compliance",
+    "Customs Lawyer Bangladesh",
+    "Customs Consultant Bangladesh",
+    "Tax Appeal Bangladesh",
+    "Tax Tribunal Lawyer Bangladesh",
+    "High Court Writ Lawyer Bangladesh",
+    "Company Legal Compliance Bangladesh",
+    "Intellectual Property Lawyer Bangladesh",
+    "Legal Consultant Dhaka",
+    "Business Legal Consultant Bangladesh",
     "TaxVat LawAid",
     "TaxAid",
     "Hossain Ahmed Khan Advocate",
-    "Income Tax Lawyer Bangladesh",
-    "VAT Consultant Dhaka",
-    "Customs Lawyer Bangladesh",
-    "RJSC Company Registration Bangladesh",
-    "High Court Writ Petition Lawyer Dhaka",
-    "Tax Appeal Tribunal Lawyer Bangladesh",
-    "Corporate Law Firm Dhaka",
-    "Mushak 9.1 VAT Return Bangladesh",
-    "IRC ERC BIDA Registration Dhaka",
+    "আয়কর আইনজীবী ঢাকা",
+    "ভ্যাট পরামর্শক বাংলাদেশ",
+    "কাস্টমস আইনজীবী",
+    "কোম্পানি রেজিস্ট্রেশন আরজেএসসি",
+    "হাইকোর্ট রিট পিটিশন",
   ],
   alternates: {
     canonical: "/",
+    languages: {
+      "bn-BD": "/",
+      "en-US": "/",
+    },
   },
   openGraph: {
     title:
-      "TaxVat LawAid | Trusted Tax, VAT, Customs & Corporate Legal Counsel in Bangladesh",
+      "TaxVat LawAid | Strategic Legal Counsel & Trusted Business Protection",
     description:
       "Schedule an in-person Ramna, Dhaka chamber appointment, video call, or phone consultation for Income Tax, VAT, Customs, RJSC Company Law, Tribunals & High Court Writs.",
     url: siteUrl,
     siteName: FIRM_INFO.name,
-    locale: "en_BD",
+    locale: "bn_BD",
+    alternateLocale: ["en_US"],
     type: "website",
     images: [
       {
-        url: "/images/hero-legal-chamber.jpg",
+        url: "/images/taxvat-og-preview.png",
         width: 1200,
-        height: 900,
-        alt: "TaxVat LawAid — Legal, Tax, VAT & Corporate Chamber in Dhaka, Bangladesh",
+        height: 630,
+        alt: "TaxVat LawAid — Strategic Legal Counsel, Tax, VAT & Corporate Law Firm Bangladesh",
+        type: "image/png",
       },
     ],
   },
@@ -57,7 +80,7 @@ export const metadata: Metadata = {
     title: "TaxVat LawAid | Tax, VAT, Customs & Corporate Legal Solutions",
     description:
       "Book a consultation with Advocate Hossain Ahmed (Khan) in Ramna, Dhaka or online across Bangladesh.",
-    images: ["/images/hero-legal-chamber.jpg"],
+    images: ["/images/taxvat-og-preview.png"],
   },
   icons: {
     icon: "/images/taxvat-lawaid-logo.png",
@@ -66,6 +89,13 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
@@ -73,10 +103,10 @@ const legalServiceJsonLd = {
   "@context": "https://schema.org",
   "@type": "LegalService",
   name: FIRM_INFO.name,
-  alternateName: FIRM_INFO.associatedPractice,
+  alternateName: [FIRM_INFO.associatedPractice, "ট্যাক্সভ্যাট ল-এইড"],
   url: siteUrl,
   logo: `${siteUrl}/images/taxvat-lawaid-logo.png`,
-  image: `${siteUrl}/images/hero-legal-chamber.jpg`,
+  image: `${siteUrl}/images/taxvat-og-preview.png`,
   description:
     "Integrated legal, income tax, VAT, customs, RJSC company law, intellectual property, tribunal and High Court writ services in Bangladesh.",
   telephone: FIRM_INFO.phones[0].tel,
@@ -112,7 +142,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="bn">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
